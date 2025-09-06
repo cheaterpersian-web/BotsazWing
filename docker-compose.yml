@@ -13,7 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5432:5432"
+      - "15432:5432"
     networks:
       - telegram-bot-saas
     restart: unless-stopped
@@ -31,7 +31,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      - "16379:6379"
     networks:
       - telegram-bot-saas
     restart: unless-stopped
