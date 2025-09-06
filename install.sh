@@ -32,8 +32,7 @@ log_error() {
 # Check if running as root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        log_error "This script should not be run as root"
-        exit 1
+        log_warning "Running as root. Proceeding in root mode."
     fi
 }
 

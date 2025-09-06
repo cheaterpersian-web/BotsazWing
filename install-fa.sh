@@ -83,10 +83,16 @@ get_confirmation() {
 # بررسی ریشه بودن
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        log_error "این اسکریپت نباید با دسترسی root اجرا شود"
-        exit 1
+        log_warning "اسکریپت با دسترسی ریشه اجرا می‌شود. ادامه در حالت root."
     fi
 }
+
+# تنظیم متغیر SUDO برای سازگاری با حالت root
+if [[ $EUID -eq 0 ]]; then
+    SUDO=""
+else
+    SUDO="sudo"
+fi
 
 # بررسی پیش‌نیازها
 check_requirements() {

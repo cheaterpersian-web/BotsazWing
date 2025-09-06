@@ -54,11 +54,16 @@ show_banner() {
 # بررسی ریشه بودن
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        log_error "این اسکریپت نباید با دسترسی root اجرا شود"
-        log "لطفاً با کاربر عادی اجرا کنید"
-        exit 1
+        log_warning "اسکریپت با دسترسی ریشه اجرا می‌شود. ادامه در حالت root."
     fi
 }
+
+# تنظیم متغیر SUDO برای سازگاری با حالت root
+if [[ $EUID -eq 0 ]]; then
+    SUDO=""
+else
+    SUDO="sudo"
+fi
 
 # بررسی سیستم عامل
 check_os() {
@@ -93,14 +98,14 @@ install_prerequisites() {
     # به‌روزرسانی پکیج‌ها
     log "به‌روزرسانی پکیج‌ها..."
     if command -v apt-get &> /dev/null; then
-        sudo apt-get update -y
-        sudo apt-get install -y curl wget git unzip
+        $SUDO apt-get update -y
+        $SUDO apt-get install -y curl wget git unzip
     elif command -v yum &> /dev/null; then
-        sudo yum update -y
-        sudo yum install -y curl wget git unzip
+        $SUDO yum update -y
+        $SUDO yum install -y curl wget git unzip
     elif command -v dnf &> /dev/null; then
-        sudo dnf update -y
-        sudo dnf install -y curl wget git unzip
+        $SUDO dnf update -y
+        $SUDO dnf install -y curl wget git unzip
     fi
     
     log_success "پیش‌نیازها نصب شد"
@@ -118,15 +123,17 @@ install_docker() {
         
         # دانلود و اجرای اسکریپت نصب Docker
         curl -fsSL https://get.docker.com -o get-docker.sh
-        sudo sh get-docker.sh
+        $SUDO sh get-docker.sh
         rm get-docker.sh
         
         # راه‌اندازی Docker
-        sudo systemctl start docker
-        sudo systemctl enable docker
+        $SUDO systemctl start docker
+        $SUDO systemctl enable docker
         
-        # اضافه کردن کاربر به گروه docker
-        sudo usermod -aG docker $USER
+        # اضافه کردن کاربر به گروه docker (فقط اگر با کاربر غیرریشه اجرا شده باشد)
+        if [[ $EUID -ne 0 ]]; then
+            $SUDO usermod -aG docker $USER
+        fi
         
         log_success "Docker نصب شد"
     fi
@@ -150,13 +157,13 @@ install_docker_compose() {
         COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
         
         # دانلود و نصب
-        sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        $SUDO curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         
         # اعطای مجوز اجرا
-        sudo chmod +x /usr/local/bin/docker-compose
+        $SUDO chmod +x /usr/local/bin/docker-compose
         
         # ایجاد لینک نمادین
-        sudo ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+        $SUDO ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
         
         log_success "Docker Compose نصب شد"
     fi
