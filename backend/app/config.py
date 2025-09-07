@@ -28,8 +28,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     algorithm: str = "HS256"
     
-    # CORS
-    allowed_origins: List[str] = Field(default=["http://localhost:3000"], env="ALLOWED_ORIGINS")
+    # CORS (read as string from env; parsed via property)
+    allowed_origins_env: str = Field(default="http://localhost:3000", env="ALLOWED_ORIGINS")
     
     # File Storage
     minio_endpoint: str = Field(env="MINIO_ENDPOINT")
@@ -61,24 +61,19 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = False
 
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, value: Any) -> Any:
-        """Allow ALLOWED_ORIGINS to be provided as JSON array or comma-separated string."""
-        if isinstance(value, str):
-            value_str = value.strip()
-            if not value_str:
-                return []
-            # Try JSON first
-            try:
-                parsed = json.loads(value_str)
-                if isinstance(parsed, list):
-                    return [str(item) for item in parsed]
-            except Exception:
-                pass
-            # Fallback to comma-separated
-            return [item.strip() for item in value_str.split(",") if item.strip()]
-        return value
+    @property
+    def allowed_origins(self) -> List[str]:
+        """Parse ALLOWED_ORIGINS from env as JSON array or comma-separated string."""
+        value_str = (self.allowed_origins_env or "").strip()
+        if not value_str:
+            return []
+        try:
+            parsed = json.loads(value_str)
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed]
+        except Exception:
+            pass
+        return [item.strip() for item in value_str.split(",") if item.strip()]
 
 
 # Global settings instance
