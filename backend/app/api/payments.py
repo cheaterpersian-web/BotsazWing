@@ -106,7 +106,7 @@ async def list_my_payments(
 async def list_all_payments(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
-    status_filter: str = Query(None, regex="^(pending|confirmed|rejected|cancelled)$"),
+    status_filter: str = Query(None, pattern="^(pending|confirmed|rejected|cancelled)$"),
     current_admin: User = Depends(require_manage_payments),
     db: AsyncSession = Depends(get_db)
 ):
