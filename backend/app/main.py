@@ -2,7 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -17,6 +17,7 @@ from .api import auth, users, bots, subscriptions, payments
 from .api.dependencies import get_current_user_or_admin
 from .schemas import HealthCheck, MessageResponse
 from datetime import datetime
+from sqlalchemy import text
 
 # Configure logging
 logging.basicConfig(
@@ -116,7 +117,7 @@ async def health_check():
     try:
         # Check database connection
         async with engine.begin() as conn:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         database_status = True
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
