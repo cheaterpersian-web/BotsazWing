@@ -6,6 +6,8 @@ from typing import Optional, Union
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from cryptography.fernet import Fernet
+import base64
+import hashlib
 from fastapi import HTTPException, status
 from .config import settings
 
@@ -18,7 +20,24 @@ SECRET_KEY = settings.secret_key
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 # Encryption
-fernet = Fernet(settings.encryption_key.encode())
+def _derive_fernet_key(raw_secret: str) -> bytes:
+    """Return a valid Fernet key.
+    - If raw_secret is already a valid Fernet key (urlsafe base64 32 bytes), use it.
+    - Otherwise derive a key deterministically via SHA-256 and urlsafe_b64encode.
+    """
+    if not raw_secret:
+        raise ValueError("ENCRYPTION_KEY is required")
+    candidate = raw_secret.encode()
+    try:
+        # Validate candidate as Fernet key
+        Fernet(candidate)
+        return candidate
+    except Exception:
+        digest = hashlib.sha256(raw_secret.encode()).digest()
+        return base64.urlsafe_b64encode(digest)
+
+FERNET_KEY = _derive_fernet_key(settings.encryption_key)
+fernet = Fernet(FERNET_KEY)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

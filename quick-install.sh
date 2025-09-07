@@ -33,6 +33,16 @@ fi
 echo -e "${GREEN}✅ پیش‌نیازها موجود است${NC}"
 echo
 
+# Detect compose command (v2 preferred)
+if docker compose version > /dev/null 2>&1; then
+  COMPOSE="docker compose"
+elif command -v docker-compose > /dev/null 2>&1; then
+  COMPOSE="docker-compose"
+else
+  echo -e "${RED}❌ Docker Compose نصب نیست!${NC}"
+  exit 1
+fi
+
 # دریافت اطلاعات ضروری
 echo -e "${BLUE}لطفاً اطلاعات زیر را وارد کنید:${NC}"
 echo
@@ -63,16 +73,22 @@ MINIO_ACCESS_KEY=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-12)
 MINIO_SECRET_KEY=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
 GRAFANA_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-12)
 
+# sanitize single-line values
+SECRET_KEY_SAN=$(printf "%s" "$SECRET_KEY" | tr -d '\r\n')
+ENCRYPTION_KEY_SAN=$(printf "%s" "$ENCRYPTION_KEY" | tr -d '\r\n')
+BOT_TOKEN_SAN=$(printf "%s" "$BOT_TOKEN" | tr -d '\r\n')
+API_TOKEN_SAN="$SECRET_KEY_SAN"
+
 # ایجاد فایل .env
 cat > .env << EOF
 # تنظیمات پلتفرم تلگرام بات SaaS
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 REDIS_PASSWORD=${POSTGRES_PASSWORD}
-SECRET_KEY=${SECRET_KEY}
-ENCRYPTION_KEY=${ENCRYPTION_KEY}
-TELEGRAM_BOT_TOKEN=${BOT_TOKEN}
+SECRET_KEY="${SECRET_KEY_SAN}"
+ENCRYPTION_KEY="${ENCRYPTION_KEY_SAN}"
+TELEGRAM_BOT_TOKEN="${BOT_TOKEN_SAN}"
 TELEGRAM_WEBHOOK_URL=
-API_TOKEN=${SECRET_KEY}
+API_TOKEN="${API_TOKEN_SAN}"
 ADMIN_TELEGRAM_IDS=${ADMIN_ID}
 BANK_ACCOUNT_NUMBER=${BANK_ACCOUNT}
 CRYPTO_WALLET_ADDRESS=${CRYPTO_WALLET}
@@ -80,6 +96,14 @@ MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
 MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
 GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
 DEBUG=false
+
+# پورت‌های هاست (برای جلوگیری از تداخل)
+HOST_POSTGRES_PORT=15432
+HOST_REDIS_PORT=16379
+HOST_BACKEND_PORT=18000
+HOST_FRONTEND_PORT=3000
+HOST_NGINX_HTTP_PORT=18080
+HOST_NGINX_HTTPS_PORT=18443
 EOF
 
 # ایجاد دایرکتوری‌ها
@@ -113,9 +137,9 @@ EOF
 
 # راه‌اندازی سرویس‌ها
 echo -e "${YELLOW}در حال راه‌اندازی سرویس‌ها...${NC}"
-docker-compose pull postgres redis minio nginx prometheus grafana
-docker-compose build
-docker-compose up -d
+$COMPOSE pull postgres redis minio nginx prometheus grafana
+$COMPOSE build
+$COMPOSE up -d
 
 # انتظار برای آماده شدن
 echo -e "${YELLOW}انتظار برای آماده شدن سرویس‌ها...${NC}"
@@ -147,6 +171,6 @@ if curl -f http://localhost:8000/health &> /dev/null; then
     echo "=========================================="
 else
     echo -e "${RED}❌ خطا در نصب!${NC}"
-    echo "لاگ‌ها را بررسی کنید: docker-compose logs"
+    echo "لاگ‌ها را بررسی کنید: $COMPOSE logs"
     exit 1
 fi

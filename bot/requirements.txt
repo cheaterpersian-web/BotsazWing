@@ -1,8 +1,9 @@
 # Telegram Bot Dependencies
 aiogram==3.1.1
-aiohttp==3.9.1
+aiohttp~=3.8.5
 python-dotenv==1.0.0
-pydantic==2.5.0
+pydantic>=2.1.1,<2.4
+pydantic-settings==2.1.0
 httpx==0.25.2
 redis==5.0.1
 structlog==23.2.0

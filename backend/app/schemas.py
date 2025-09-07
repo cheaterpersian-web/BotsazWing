@@ -195,7 +195,7 @@ class PaymentBase(BaseSchema):
     subscription_id: uuid.UUID
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="USD", max_length=3)
-    payment_method: str = Field(..., regex="^(bank_transfer|crypto)$")
+    payment_method: str = Field(..., pattern="^(bank_transfer|crypto)$")
 
 
 class PaymentCreate(PaymentBase):
@@ -232,7 +232,7 @@ class Payment(PaymentBase):
 class BuildLogBase(BaseSchema):
     """Base build log schema."""
     event: str = Field(..., min_length=1, max_length=255)
-    level: str = Field(default="info", regex="^(info|warning|error)$")
+    level: str = Field(default="info", pattern="^(info|warning|error)$")
     message: str = Field(..., min_length=1)
     metadata: Optional[Dict[str, Any]] = None
 

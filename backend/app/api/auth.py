@@ -9,6 +9,7 @@ from ..database import get_db
 from ..crud import UserCRUD, AdminCRUD
 from ..schemas import User, Admin, Token, UserCreate, AdminCreate
 from ..security import create_access_token, verify_token
+from .dependencies import get_current_user, get_current_admin
 from ..config import settings
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -82,9 +83,7 @@ async def get_current_user_info(
     current_admin: Admin = Depends(get_current_admin)
 ):
     """Get current user or admin information."""
-    # This endpoint will be handled by the dependency injection
-    # The actual user/admin will be determined by the token
-    pass
+    return current_admin or current_user
 
 
 @router.post("/verify-token")

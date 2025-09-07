@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts';
 import { authAPI } from '../services/api';
 import toast from 'react-hot-toast';
 

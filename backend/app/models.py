@@ -158,7 +158,8 @@ class BuildLog(Base):
     event = Column(String(255), nullable=False)
     level = Column(String(20), default="info")  # info, warning, error
     message = Column(Text, nullable=False)
-    metadata = Column(JSONB)
+    # 'metadata' is reserved in SQLAlchemy Declarative; use python attr 'meta' mapped to DB column 'metadata'
+    meta = Column("metadata", JSONB)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     
     # Relationships

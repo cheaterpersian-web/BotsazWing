@@ -83,10 +83,16 @@ get_confirmation() {
 # بررسی ریشه بودن
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        log_error "این اسکریپت نباید با دسترسی root اجرا شود"
-        exit 1
+        log_warning "اسکریپت با دسترسی ریشه اجرا می‌شود. ادامه در حالت root."
     fi
 }
+
+# تنظیم متغیر SUDO برای سازگاری با حالت root
+if [[ $EUID -eq 0 ]]; then
+    SUDO=""
+else
+    SUDO="sudo"
+fi
 
 # بررسی پیش‌نیازها
 check_requirements() {
@@ -121,6 +127,18 @@ check_requirements() {
     fi
     
     log_success "همه پیش‌نیازها موجود است"
+}
+
+# تشخیص دستور Compose (نسخه 2 یا 1)
+detect_compose() {
+    if docker compose version > /dev/null 2>&1; then
+        COMPOSE="docker compose"
+    elif command -v docker-compose > /dev/null 2>&1; then
+        COMPOSE="docker-compose"
+    else
+        log_error "Docker Compose نصب نیست."
+        exit 1
+    fi
 }
 
 # دریافت اطلاعات از کاربر
@@ -222,6 +240,12 @@ create_env_file() {
         cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
     fi
     
+    # sanitize single-line values
+    SECRET_KEY_SAN=$(printf "%s" "$SECRET_KEY" | tr -d '\r\n')
+    ENCRYPTION_KEY_SAN=$(printf "%s" "$ENCRYPTION_KEY" | tr -d '\r\n')
+    BOT_TOKEN_SAN=$(printf "%s" "$BOT_TOKEN" | tr -d '\r\n')
+    API_TOKEN_SAN="$SECRET_KEY_SAN"
+
     cat > .env << EOF
 # تنظیمات پلتفرم تلگرام بات SaaS
 # تولید شده در $(date)
@@ -231,13 +255,13 @@ POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # کلیدهای امنیتی
-SECRET_KEY=${SECRET_KEY}
-ENCRYPTION_KEY=${ENCRYPTION_KEY}
+SECRET_KEY="${SECRET_KEY_SAN}"
+ENCRYPTION_KEY="${ENCRYPTION_KEY_SAN}"
 
 # تنظیمات تلگرام بات
-TELEGRAM_BOT_TOKEN=${BOT_TOKEN}
+TELEGRAM_BOT_TOKEN="${BOT_TOKEN_SAN}"
 TELEGRAM_WEBHOOK_URL=${WEBHOOK_URL}
-API_TOKEN=${SECRET_KEY}
+API_TOKEN="${API_TOKEN_SAN}"
 
 # تنظیمات ادمین
 ADMIN_TELEGRAM_IDS=${ADMIN_TELEGRAM_ID}
@@ -261,6 +285,12 @@ DEPLOYMENT_TIMEOUT=${DEPLOYMENT_TIMEOUT}
 # تنظیمات SSL (اختیاری)
 SSL_CERT_PATH=${SSL_CERT_PATH}
 SSL_KEY_PATH=${SSL_KEY_PATH}
+ 
+# پورت‌های هاست (برای جلوگیری از تداخل)
+HOST_POSTGRES_PORT=15432
+HOST_REDIS_PORT=16379
+HOST_BACKEND_PORT=18000
+HOST_FRONTEND_PORT=3000
 EOF
     
     log_success "فایل .env ایجاد شد"
@@ -518,15 +548,15 @@ start_services() {
     
     # دریافت تصاویر پایه
     log_info "دریافت تصاویر پایه..."
-    docker-compose pull postgres redis minio nginx prometheus grafana
+    $COMPOSE pull postgres redis minio nginx prometheus grafana
     
     # ساخت تصاویر سفارشی
     log_info "ساخت تصاویر سفارشی..."
-    docker-compose build
+    $COMPOSE build
     
     # راه‌اندازی سرویس‌ها
     log_info "راه‌اندازی سرویس‌ها..."
-    docker-compose up -d
+    $COMPOSE up -d
     
     log_success "سرویس‌ها راه‌اندازی شد"
 }
@@ -537,11 +567,11 @@ wait_for_services() {
     
     # انتظار برای دیتابیس
     log_info "انتظار برای دیتابیس..."
-    timeout 60 bash -c 'until docker-compose exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas; do sleep 2; done'
+    timeout 60 bash -c "until $COMPOSE exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas; do sleep 2; done"
     
     # انتظار برای Redis
     log_info "انتظار برای Redis..."
-    timeout 30 bash -c 'until docker-compose exec -T redis redis-cli ping; do sleep 2; done'
+    timeout 30 bash -c "until $COMPOSE exec -T redis redis-cli ping; do sleep 2; done"
     
     # انتظار برای MinIO
     log_info "انتظار برای MinIO..."
@@ -675,13 +705,13 @@ show_summary() {
     echo "  • Health Check:    http://localhost:8000/health"
     echo
     echo "لاگ‌ها:"
-    echo "  • مشاهده لاگ‌ها:   docker-compose logs -f [service]"
-    echo "  • همه سرویس‌ها:    docker-compose logs -f"
+    echo "  • مشاهده لاگ‌ها:   $COMPOSE logs -f [service]"
+    echo "  • همه سرویس‌ها:    $COMPOSE logs -f"
     echo
     echo "مدیریت:"
-    echo "  • توقف سرویس‌ها:   docker-compose down"
-    echo "  • راه‌اندازی:      docker-compose up -d"
-    echo "  • راه‌اندازی مجدد: docker-compose restart"
+    echo "  • توقف سرویس‌ها:   $COMPOSE down"
+    echo "  • راه‌اندازی:      $COMPOSE up -d"
+    echo "  • راه‌اندازی مجدد: $COMPOSE restart"
     echo
     echo "پشتیبان‌گیری:"
     echo "  • پشتیبان‌گیری:    ./backup.sh"
@@ -697,6 +727,7 @@ main() {
     echo
     
     check_root
+    detect_compose
     check_requirements
     get_user_inputs
     generate_passwords

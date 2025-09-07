@@ -29,11 +29,22 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Detect compose command (v2 or v1)
+detect_compose() {
+    if docker compose version > /dev/null 2>&1; then
+        COMPOSE="docker compose"
+    elif command -v docker-compose > /dev/null 2>&1; then
+        COMPOSE="docker-compose"
+    else
+        log_error "Docker Compose is not installed."
+        exit 1
+    fi
+}
+
 # Check if running as root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        log_error "This script should not be run as root"
-        exit 1
+        log_warning "Running as root. Proceeding in root mode."
     fi
 }
 
@@ -94,6 +105,11 @@ create_env_file() {
         cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
     fi
     
+    # sanitize single-line values
+    SECRET_KEY_SAN=$(printf "%s" "$SECRET_KEY" | tr -d '\r\n')
+    ENCRYPTION_KEY_SAN=$(printf "%s" "$ENCRYPTION_KEY" | tr -d '\r\n')
+    API_TOKEN_SAN="$SECRET_KEY_SAN"
+
     cat > .env << EOF
 # Telegram Bot SaaS Platform Environment Configuration
 # Generated on $(date)
@@ -103,13 +119,13 @@ POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # Security Keys
-SECRET_KEY=${SECRET_KEY}
-ENCRYPTION_KEY=${ENCRYPTION_KEY}
+SECRET_KEY="${SECRET_KEY_SAN}"
+ENCRYPTION_KEY="${ENCRYPTION_KEY_SAN}"
 
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
 TELEGRAM_WEBHOOK_URL=
-API_TOKEN=${SECRET_KEY}
+API_TOKEN="${API_TOKEN_SAN}"
 
 # Admin Configuration
 ADMIN_TELEGRAM_IDS=
@@ -127,6 +143,18 @@ SENTRY_DSN=
 GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
 EOF
     
+    # Add host port mappings to avoid conflicts
+    cat >> .env << EOF
+
+# Host port mappings
+HOST_POSTGRES_PORT=15432
+HOST_REDIS_PORT=16379
+HOST_BACKEND_PORT=18000
+HOST_FRONTEND_PORT=3000
+HOST_NGINX_HTTP_PORT=18080
+HOST_NGINX_HTTPS_PORT=18443
+EOF
+
     log_success "Environment file created"
 }
 
@@ -206,15 +234,15 @@ start_services() {
     
     # Pull base images
     log_info "Pulling base images..."
-    docker-compose pull postgres redis minio nginx prometheus grafana
+    $COMPOSE pull postgres redis minio nginx prometheus grafana
     
     # Build custom images
     log_info "Building custom images..."
-    docker-compose build
+    $COMPOSE build
     
     # Start services
     log_info "Starting services..."
-    docker-compose up -d
+    $COMPOSE up -d
     
     log_success "Services started"
 }
@@ -225,11 +253,11 @@ wait_for_services() {
     
     # Wait for database
     log_info "Waiting for database..."
-    timeout 60 bash -c 'until docker-compose exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas; do sleep 2; done'
+    timeout 60 bash -c "until $COMPOSE exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas; do sleep 2; done"
     
     # Wait for Redis
     log_info "Waiting for Redis..."
-    timeout 30 bash -c 'until docker-compose exec -T redis redis-cli ping; do sleep 2; done'
+    timeout 30 bash -c "until $COMPOSE exec -T redis redis-cli ping; do sleep 2; done"
     
     # Wait for MinIO
     log_info "Waiting for MinIO..."
@@ -292,6 +320,7 @@ main() {
     echo
     
     check_root
+    detect_compose
     check_requirements
     generate_passwords
     create_env_file
