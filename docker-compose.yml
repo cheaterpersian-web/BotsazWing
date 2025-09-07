@@ -214,8 +214,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/ssl:/etc/nginx/ssl
     ports:
-      - "80:80"
-      - "443:443"
+      - "${HOST_NGINX_HTTP_PORT:-18080}:80"
+      - "${HOST_NGINX_HTTPS_PORT:-18443}:443"
     networks:
       - telegram-bot-saas
     depends_on:
