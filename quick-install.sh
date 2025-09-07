@@ -33,6 +33,16 @@ fi
 echo -e "${GREEN}✅ پیش‌نیازها موجود است${NC}"
 echo
 
+# Detect compose command (v2 preferred)
+if docker compose version > /dev/null 2>&1; then
+  COMPOSE="docker compose"
+elif command -v docker-compose > /dev/null 2>&1; then
+  COMPOSE="docker-compose"
+else
+  echo -e "${RED}❌ Docker Compose نصب نیست!${NC}"
+  exit 1
+fi
+
 # دریافت اطلاعات ضروری
 echo -e "${BLUE}لطفاً اطلاعات زیر را وارد کنید:${NC}"
 echo
@@ -119,9 +129,9 @@ EOF
 
 # راه‌اندازی سرویس‌ها
 echo -e "${YELLOW}در حال راه‌اندازی سرویس‌ها...${NC}"
-docker-compose pull postgres redis minio nginx prometheus grafana
-docker-compose build
-docker-compose up -d
+$COMPOSE pull postgres redis minio nginx prometheus grafana
+$COMPOSE build
+$COMPOSE up -d
 
 # انتظار برای آماده شدن
 echo -e "${YELLOW}انتظار برای آماده شدن سرویس‌ها...${NC}"
@@ -153,6 +163,6 @@ if curl -f http://localhost:8000/health &> /dev/null; then
     echo "=========================================="
 else
     echo -e "${RED}❌ خطا در نصب!${NC}"
-    echo "لاگ‌ها را بررسی کنید: docker-compose logs"
+    echo "لاگ‌ها را بررسی کنید: $COMPOSE logs"
     exit 1
 fi

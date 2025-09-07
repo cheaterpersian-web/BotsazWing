@@ -16,6 +16,16 @@ echo -e "${BLUE}🧪 تست نصب پلتفرم تلگرام بات SaaS${NC}"
 echo "====================================="
 echo
 
+# Detect compose command (v2 preferred)
+if docker compose version > /dev/null 2>&1; then
+  COMPOSE="docker compose"
+elif command -v docker-compose > /dev/null 2>&1; then
+  COMPOSE="docker-compose"
+else
+  echo -e "${RED}❌ Docker Compose نصب نیست!${NC}"
+  exit 1
+fi
+
 # تابع تست
 test_service() {
     local service_name="$1"
@@ -37,7 +47,7 @@ test_service() {
 test_database() {
     echo -n "تست اتصال دیتابیس... "
     
-    if docker-compose exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas > /dev/null 2>&1; then
+    if $COMPOSE exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas > /dev/null 2>&1; then
         echo -e "${GREEN}✅ موفق${NC}"
         return 0
     else
@@ -50,7 +60,7 @@ test_database() {
 test_redis() {
     echo -n "تست اتصال Redis... "
     
-    if docker-compose exec -T redis redis-cli ping > /dev/null 2>&1; then
+    if $COMPOSE exec -T redis redis-cli ping > /dev/null 2>&1; then
         echo -e "${GREEN}✅ موفق${NC}"
         return 0
     else
@@ -147,7 +157,7 @@ check_containers() {
     echo -e "${BLUE}بررسی وضعیت کانتینرها:${NC}"
     echo
     
-    docker-compose ps
+    $COMPOSE ps
     echo
 }
 
@@ -177,21 +187,21 @@ check_logs() {
     echo "🔍 جستجوی خطاها در لاگ‌ها..."
     
     # بررسی لاگ‌های بک‌اند
-    if docker-compose logs backend 2>&1 | grep -i error | head -5; then
+    if $COMPOSE logs backend 2>&1 | grep -i error | head -5; then
         echo -e "${YELLOW}⚠️ خطاهایی در بک‌اند یافت شد${NC}"
     else
         echo -e "${GREEN}✅ لاگ‌های بک‌اند پاک است${NC}"
     fi
     
     # بررسی لاگ‌های بات
-    if docker-compose logs bot 2>&1 | grep -i error | head -5; then
+    if $COMPOSE logs bot 2>&1 | grep -i error | head -5; then
         echo -e "${YELLOW}⚠️ خطاهایی در بات یافت شد${NC}"
     else
         echo -e "${GREEN}✅ لاگ‌های بات پاک است${NC}"
     fi
     
     # بررسی لاگ‌های دیتابیس
-    if docker-compose logs postgres 2>&1 | grep -i error | head -5; then
+    if $COMPOSE logs postgres 2>&1 | grep -i error | head -5; then
         echo -e "${YELLOW}⚠️ خطاهایی در دیتابیس یافت شد${NC}"
     else
         echo -e "${GREEN}✅ لاگ‌های دیتابیس پاک است${NC}"
@@ -323,8 +333,8 @@ main() {
     if [ $passed_tests -lt $total_tests ]; then
         echo
         echo -e "${YELLOW}پیشنهادات برای رفع مشکلات:${NC}"
-        echo "1. لاگ‌ها را بررسی کنید: docker-compose logs"
-        echo "2. سرویس‌ها را راه‌اندازی مجدد کنید: docker-compose restart"
+        echo "1. لاگ‌ها را بررسی کنید: $COMPOSE logs"
+        echo "2. سرویس‌ها را راه‌اندازی مجدد کنید: $COMPOSE restart"
         echo "3. منابع سیستم را بررسی کنید"
         echo "4. تنظیمات فایروال را بررسی کنید"
     fi

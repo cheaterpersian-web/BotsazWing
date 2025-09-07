@@ -29,6 +29,18 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Detect compose command (v2 or v1)
+detect_compose() {
+    if docker compose version > /dev/null 2>&1; then
+        COMPOSE="docker compose"
+    elif command -v docker-compose > /dev/null 2>&1; then
+        COMPOSE="docker-compose"
+    else
+        log_error "Docker Compose is not installed."
+        exit 1
+    fi
+}
+
 # Check if running as root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
@@ -215,15 +227,15 @@ start_services() {
     
     # Pull base images
     log_info "Pulling base images..."
-    docker-compose pull postgres redis minio nginx prometheus grafana
+    $COMPOSE pull postgres redis minio nginx prometheus grafana
     
     # Build custom images
     log_info "Building custom images..."
-    docker-compose build
+    $COMPOSE build
     
     # Start services
     log_info "Starting services..."
-    docker-compose up -d
+    $COMPOSE up -d
     
     log_success "Services started"
 }
@@ -234,11 +246,11 @@ wait_for_services() {
     
     # Wait for database
     log_info "Waiting for database..."
-    timeout 60 bash -c 'until docker-compose exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas; do sleep 2; done'
+    timeout 60 bash -c "until $COMPOSE exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas; do sleep 2; done"
     
     # Wait for Redis
     log_info "Waiting for Redis..."
-    timeout 30 bash -c 'until docker-compose exec -T redis redis-cli ping; do sleep 2; done'
+    timeout 30 bash -c "until $COMPOSE exec -T redis redis-cli ping; do sleep 2; done"
     
     # Wait for MinIO
     log_info "Waiting for MinIO..."
@@ -301,6 +313,7 @@ main() {
     echo
     
     check_root
+    detect_compose
     check_requirements
     generate_passwords
     create_env_file

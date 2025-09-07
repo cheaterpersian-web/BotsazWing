@@ -129,6 +129,18 @@ check_requirements() {
     log_success "همه پیش‌نیازها موجود است"
 }
 
+# تشخیص دستور Compose (نسخه 2 یا 1)
+detect_compose() {
+    if docker compose version > /dev/null 2>&1; then
+        COMPOSE="docker compose"
+    elif command -v docker-compose > /dev/null 2>&1; then
+        COMPOSE="docker-compose"
+    else
+        log_error "Docker Compose نصب نیست."
+        exit 1
+    fi
+}
+
 # دریافت اطلاعات از کاربر
 get_user_inputs() {
     echo
@@ -530,15 +542,15 @@ start_services() {
     
     # دریافت تصاویر پایه
     log_info "دریافت تصاویر پایه..."
-    docker-compose pull postgres redis minio nginx prometheus grafana
+    $COMPOSE pull postgres redis minio nginx prometheus grafana
     
     # ساخت تصاویر سفارشی
     log_info "ساخت تصاویر سفارشی..."
-    docker-compose build
+    $COMPOSE build
     
     # راه‌اندازی سرویس‌ها
     log_info "راه‌اندازی سرویس‌ها..."
-    docker-compose up -d
+    $COMPOSE up -d
     
     log_success "سرویس‌ها راه‌اندازی شد"
 }
@@ -549,11 +561,11 @@ wait_for_services() {
     
     # انتظار برای دیتابیس
     log_info "انتظار برای دیتابیس..."
-    timeout 60 bash -c 'until docker-compose exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas; do sleep 2; done'
+    timeout 60 bash -c "until $COMPOSE exec -T postgres pg_isready -U telegram_bot_user -d telegram_bot_saas; do sleep 2; done"
     
     # انتظار برای Redis
     log_info "انتظار برای Redis..."
-    timeout 30 bash -c 'until docker-compose exec -T redis redis-cli ping; do sleep 2; done'
+    timeout 30 bash -c "until $COMPOSE exec -T redis redis-cli ping; do sleep 2; done"
     
     # انتظار برای MinIO
     log_info "انتظار برای MinIO..."
@@ -687,13 +699,13 @@ show_summary() {
     echo "  • Health Check:    http://localhost:8000/health"
     echo
     echo "لاگ‌ها:"
-    echo "  • مشاهده لاگ‌ها:   docker-compose logs -f [service]"
-    echo "  • همه سرویس‌ها:    docker-compose logs -f"
+    echo "  • مشاهده لاگ‌ها:   $COMPOSE logs -f [service]"
+    echo "  • همه سرویس‌ها:    $COMPOSE logs -f"
     echo
     echo "مدیریت:"
-    echo "  • توقف سرویس‌ها:   docker-compose down"
-    echo "  • راه‌اندازی:      docker-compose up -d"
-    echo "  • راه‌اندازی مجدد: docker-compose restart"
+    echo "  • توقف سرویس‌ها:   $COMPOSE down"
+    echo "  • راه‌اندازی:      $COMPOSE up -d"
+    echo "  • راه‌اندازی مجدد: $COMPOSE restart"
     echo
     echo "پشتیبان‌گیری:"
     echo "  • پشتیبان‌گیری:    ./backup.sh"
@@ -709,6 +721,7 @@ main() {
     echo
     
     check_root
+    detect_compose
     check_requirements
     get_user_inputs
     generate_passwords
