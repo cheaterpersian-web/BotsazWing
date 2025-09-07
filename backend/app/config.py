@@ -1,9 +1,10 @@
 """Application configuration settings."""
 
 import os
-from typing import Optional
+import json
+from typing import Optional, List, Any
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -28,7 +29,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     
     # CORS
-    allowed_origins: list[str] = Field(default=["http://localhost:3000"], env="ALLOWED_ORIGINS")
+    allowed_origins: List[str] = Field(default=["http://localhost:3000"], env="ALLOWED_ORIGINS")
     
     # File Storage
     minio_endpoint: str = Field(env="MINIO_ENDPOINT")
@@ -59,6 +60,25 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, value: Any) -> Any:
+        """Allow ALLOWED_ORIGINS to be provided as JSON array or comma-separated string."""
+        if isinstance(value, str):
+            value_str = value.strip()
+            if not value_str:
+                return []
+            # Try JSON first
+            try:
+                parsed = json.loads(value_str)
+                if isinstance(parsed, list):
+                    return [str(item) for item in parsed]
+            except Exception:
+                pass
+            # Fallback to comma-separated
+            return [item.strip() for item in value_str.split(",") if item.strip()]
+        return value
 
 
 # Global settings instance
