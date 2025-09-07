@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext.tsx';
+import { useAuth } from '../contexts';
 import {
   LayoutDashboard,
   Users,
