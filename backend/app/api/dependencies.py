@@ -7,7 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..crud import UserCRUD, AdminCRUD
-from ..security import verify_token, TokenData
+from ..security import verify_token
 from ..schemas import User, Admin
 
 # Security scheme
