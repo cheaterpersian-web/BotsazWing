@@ -126,6 +126,16 @@ SENTRY_DSN=
 GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
 EOF
     
+    # Add host port mappings to avoid conflicts
+    cat >> .env << EOF
+
+# Host port mappings
+HOST_POSTGRES_PORT=15432
+HOST_REDIS_PORT=16379
+HOST_BACKEND_PORT=18000
+HOST_FRONTEND_PORT=3000
+EOF
+
     log_success "Environment file created"
 }
 

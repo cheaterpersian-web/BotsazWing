@@ -267,6 +267,12 @@ DEPLOYMENT_TIMEOUT=${DEPLOYMENT_TIMEOUT}
 # تنظیمات SSL (اختیاری)
 SSL_CERT_PATH=${SSL_CERT_PATH}
 SSL_KEY_PATH=${SSL_KEY_PATH}
+ 
+# پورت‌های هاست (برای جلوگیری از تداخل)
+HOST_POSTGRES_PORT=15432
+HOST_REDIS_PORT=16379
+HOST_BACKEND_PORT=18000
+HOST_FRONTEND_PORT=3000
 EOF
     
     log_success "فایل .env ایجاد شد"
