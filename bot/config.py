@@ -3,7 +3,7 @@
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class BotSettings(BaseSettings):
@@ -38,6 +38,19 @@ class BotSettings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+    @field_validator("admin_telegram_ids", mode="before")
+    @classmethod
+    def parse_admin_ids(cls, v):
+        if v is None or v == "":
+            return []
+        if isinstance(v, list):
+            return [int(x) for x in v]
+        # Accept single int or comma-separated string
+        try:
+            return [int(v)]
+        except Exception:
+            return [int(x.strip()) for x in str(v).split(",") if x.strip()]
 
 
 # Global settings instance
