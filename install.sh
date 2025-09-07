@@ -105,6 +105,11 @@ create_env_file() {
         cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
     fi
     
+    # sanitize single-line values
+    SECRET_KEY_SAN=$(printf "%s" "$SECRET_KEY" | tr -d '\r\n')
+    ENCRYPTION_KEY_SAN=$(printf "%s" "$ENCRYPTION_KEY" | tr -d '\r\n')
+    API_TOKEN_SAN="$SECRET_KEY_SAN"
+
     cat > .env << EOF
 # Telegram Bot SaaS Platform Environment Configuration
 # Generated on $(date)
@@ -114,13 +119,13 @@ POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # Security Keys
-SECRET_KEY=${SECRET_KEY}
-ENCRYPTION_KEY=${ENCRYPTION_KEY}
+SECRET_KEY="${SECRET_KEY_SAN}"
+ENCRYPTION_KEY="${ENCRYPTION_KEY_SAN}"
 
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
 TELEGRAM_WEBHOOK_URL=
-API_TOKEN=${SECRET_KEY}
+API_TOKEN="${API_TOKEN_SAN}"
 
 # Admin Configuration
 ADMIN_TELEGRAM_IDS=

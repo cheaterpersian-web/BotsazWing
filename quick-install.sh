@@ -73,16 +73,22 @@ MINIO_ACCESS_KEY=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-12)
 MINIO_SECRET_KEY=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
 GRAFANA_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-12)
 
+# sanitize single-line values
+SECRET_KEY_SAN=$(printf "%s" "$SECRET_KEY" | tr -d '\r\n')
+ENCRYPTION_KEY_SAN=$(printf "%s" "$ENCRYPTION_KEY" | tr -d '\r\n')
+BOT_TOKEN_SAN=$(printf "%s" "$BOT_TOKEN" | tr -d '\r\n')
+API_TOKEN_SAN="$SECRET_KEY_SAN"
+
 # ایجاد فایل .env
 cat > .env << EOF
 # تنظیمات پلتفرم تلگرام بات SaaS
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 REDIS_PASSWORD=${POSTGRES_PASSWORD}
-SECRET_KEY=${SECRET_KEY}
-ENCRYPTION_KEY=${ENCRYPTION_KEY}
-TELEGRAM_BOT_TOKEN=${BOT_TOKEN}
+SECRET_KEY="${SECRET_KEY_SAN}"
+ENCRYPTION_KEY="${ENCRYPTION_KEY_SAN}"
+TELEGRAM_BOT_TOKEN="${BOT_TOKEN_SAN}"
 TELEGRAM_WEBHOOK_URL=
-API_TOKEN=${SECRET_KEY}
+API_TOKEN="${API_TOKEN_SAN}"
 ADMIN_TELEGRAM_IDS=${ADMIN_ID}
 BANK_ACCOUNT_NUMBER=${BANK_ACCOUNT}
 CRYPTO_WALLET_ADDRESS=${CRYPTO_WALLET}
